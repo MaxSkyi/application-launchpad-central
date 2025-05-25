@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface AddApplicationModalProps {
   open: boolean;
@@ -21,7 +22,11 @@ interface AddApplicationModalProps {
 
 const categories = ["Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
 
+const ALLOWED_EXTENSIONS = ['.zip', '.rar', '.tar', '.7z', '.gz'];
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
+
 export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: AddApplicationModalProps) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -31,6 +36,64 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
   });
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const validateFile = (file: File): boolean => {
+    // Check file extension
+    const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      toast({
+        title: "Invalid File Type",
+        description: `Please upload a file with one of these extensions: ${ALLOWED_EXTENSIONS.join(', ')}`,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File Too Large",
+        description: `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const processFile = async (file: File) => {
+    setIsProcessing(true);
+    
+    try {
+      // Simulate file processing (in a real app, you'd extract and analyze the archive)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Auto-populate form fields based on file
+      const fileName = file.name.replace(/\.(zip|rar|tar|7z|gz)$/i, '');
+      const cleanName = fileName.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || cleanName,
+        executable: prev.executable || (fileName.includes('setup') ? 'setup.exe' : 'app.exe')
+      }));
+
+      toast({
+        title: "File Processed",
+        description: `${file.name} has been processed successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Processing Error",
+        description: "Failed to process the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -42,45 +105,51 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      if (file.name.endsWith('.zip') || file.name.endsWith('.rar') || file.name.endsWith('.tar')) {
+      if (validateFile(file)) {
         setSelectedFile(file);
-        if (!formData.name) {
-          setFormData(prev => ({ ...prev, name: file.name.replace(/\.(zip|rar|tar)$/, '') }));
-        }
+        await processFile(file);
       }
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setSelectedFile(file);
-      if (!formData.name) {
-        setFormData(prev => ({ ...prev, name: file.name.replace(/\.(zip|rar|tar)$/, '') }));
+      if (validateFile(file)) {
+        setSelectedFile(file);
+        await processFile(file);
       }
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFile || !formData.name || !formData.category) return;
+    if (!selectedFile || !formData.name || !formData.category) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a file, name, and category.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const newApp = {
       name: formData.name,
       description: formData.description || "No description provided",
       icon: "/placeholder.svg",
-      size: Math.round(selectedFile.size / (1024 * 1024)) + " MB",
+      size: `${Math.round(selectedFile.size / (1024 * 1024))} MB`,
       dateAdded: new Date().toISOString().split('T')[0],
       category: formData.category,
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      executable: formData.executable || "app.exe"
+      executable: formData.executable || "app.exe",
+      fileName: selectedFile.name
     };
 
     onAddApplication(newApp);
@@ -89,11 +158,21 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     // Reset form
     setFormData({ name: "", description: "", category: "", executable: "", tags: "" });
     setSelectedFile(null);
+    
+    toast({
+      title: "Application Added",
+      description: `${newApp.name} has been added to your hub.`,
+    });
+  };
+
+  const removeFile = () => {
+    setSelectedFile(null);
+    setFormData(prev => ({ ...prev, name: "", executable: "" }));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Application</DialogTitle>
         </DialogHeader>
@@ -105,7 +184,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
-              }`}
+              } ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -114,7 +193,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
               {selectedFile ? (
                 <div className="flex items-center justify-center gap-2">
                   <FileArchive className="h-8 w-8 text-primary" />
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">{selectedFile.name}</p>
                     <p className="text-sm text-gray-500">
                       {Math.round(selectedFile.size / (1024 * 1024))} MB
@@ -124,7 +203,8 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedFile(null)}
+                    onClick={removeFile}
+                    disabled={isProcessing}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -132,19 +212,24 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
               ) : (
                 <div>
                   <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600 mb-2">Drag & drop an archive file here</p>
-                  <p className="text-sm text-gray-500 mb-4">Supports ZIP, RAR, TAR formats</p>
-                  <Button type="button" variant="outline" asChild>
+                  <p className="text-gray-600 mb-2">
+                    {isProcessing ? "Processing file..." : "Drag & drop an archive file here"}
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Supports ZIP, RAR, TAR, 7Z, GZ formats (max 500MB)
+                  </p>
+                  <Button type="button" variant="outline" asChild disabled={isProcessing}>
                     <label htmlFor="file-upload" className="cursor-pointer">
-                      Browse Files
+                      {isProcessing ? "Processing..." : "Browse Files"}
                     </label>
                   </Button>
                   <input
                     id="file-upload"
                     type="file"
-                    accept=".zip,.rar,.tar"
+                    accept=".zip,.rar,.tar,.7z,.gz"
                     onChange={handleFileSelect}
                     className="hidden"
+                    disabled={isProcessing}
                   />
                 </div>
               )}
@@ -214,8 +299,12 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={!selectedFile || !formData.name || !formData.category}>
-              Add Application
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={!selectedFile || !formData.name || !formData.category || isProcessing}
+            >
+              {isProcessing ? "Processing..." : "Add Application"}
             </Button>
           </div>
         </form>
