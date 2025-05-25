@@ -1,66 +1,20 @@
 
 import { useState } from "react";
-import { Search, Plus, Grid, List, Settings, Folder, Play, Trash2 } from "lucide-react";
+import { Search, Plus, Grid, List, Settings, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { AddApplicationModal } from "@/components/AddApplicationModal";
 import { SettingsModal } from "@/components/SettingsModal";
+import { useApplications } from "@/hooks/useApplications";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data for applications
-const mockApplications = [
-  {
-    id: "1",
-    name: "Code Editor Pro",
-    description: "Advanced code editor with syntax highlighting",
-    icon: "/placeholder.svg",
-    size: "145 MB",
-    dateAdded: "2024-01-15",
-    category: "Development",
-    tags: ["editor", "development", "coding"],
-    executable: "editor.exe"
-  },
-  {
-    id: "2",
-    name: "Image Processor",
-    description: "Batch image processing tool",
-    icon: "/placeholder.svg",
-    size: "89 MB",
-    dateAdded: "2024-01-12",
-    category: "Graphics",
-    tags: ["images", "processing", "batch"],
-    executable: "processor.exe"
-  },
-  {
-    id: "3",
-    name: "Data Analyzer",
-    description: "Statistical data analysis application",
-    icon: "/placeholder.svg",
-    size: "256 MB",
-    dateAdded: "2024-01-10",
-    category: "Analytics",
-    tags: ["data", "statistics", "analysis"],
-    executable: "analyzer.exe"
-  },
-  {
-    id: "4",
-    name: "Music Player",
-    description: "High-quality audio player",
-    icon: "/placeholder.svg",
-    size: "78 MB",
-    dateAdded: "2024-01-08",
-    category: "Media",
-    tags: ["music", "audio", "player"],
-    executable: "player.exe"
-  }
-];
-
-const categories = ["All", "Development", "Graphics", "Analytics", "Media", "Utilities"];
+const categories = ["All", "Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
 
 const Index = () => {
-  const [applications, setApplications] = useState(mockApplications);
+  const { applications, addApplication, removeApplication } = useApplications();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -77,11 +31,51 @@ const Index = () => {
 
   const handleLaunchApp = (app: any) => {
     console.log(`Launching ${app.name}...`);
-    // In a real app, this would trigger the extraction and launch process
+    toast({
+      title: "Application Launched",
+      description: `${app.name} is starting...`,
+    });
   };
 
   const handleDeleteApp = (appId: string) => {
-    setApplications(apps => apps.filter(app => app.id !== appId));
+    const app = applications.find(a => a.id === appId);
+    removeApplication(appId);
+    toast({
+      title: "Application Removed",
+      description: `${app?.name || 'Application'} has been removed from the hub.`,
+      variant: "destructive",
+    });
+  };
+
+  const handleAddApplication = (newApp: any) => {
+    addApplication(newApp);
+    toast({
+      title: "Application Added",
+      description: `${newApp.name} has been added to your hub.`,
+    });
+  };
+
+  // Calculate total size
+  const totalSize = applications.reduce((total, app) => {
+    const sizeNum = parseInt(app.size.replace(/[^\d]/g, ''));
+    return total + sizeNum;
+  }, 0);
+
+  // Get last added date
+  const lastAdded = applications.length > 0 
+    ? new Date(Math.max(...applications.map(app => new Date(app.dateAdded).getTime())))
+    : null;
+
+  const formatLastAdded = () => {
+    if (!lastAdded) return "Never";
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - lastAdded.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    return lastAdded.toLocaleDateString();
   };
 
   return (
@@ -166,7 +160,7 @@ const Index = () => {
               <CardTitle className="text-sm font-medium text-gray-600">Categories</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{categories.length - 1}</div>
+              <div className="text-2xl font-bold">{new Set(applications.map(app => app.category)).size}</div>
             </CardContent>
           </Card>
           <Card>
@@ -174,7 +168,7 @@ const Index = () => {
               <CardTitle className="text-sm font-medium text-gray-600">Total Size</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">568 MB</div>
+              <div className="text-2xl font-bold">{totalSize} MB</div>
             </CardContent>
           </Card>
           <Card>
@@ -182,7 +176,7 @@ const Index = () => {
               <CardTitle className="text-sm font-medium text-gray-600">Last Added</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">Today</div>
+              <div className="text-2xl font-bold">{formatLastAdded()}</div>
             </CardContent>
           </Card>
         </div>
@@ -208,7 +202,12 @@ const Index = () => {
           <div className="text-center py-12">
             <Folder className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No applications found</h3>
-            <p className="text-gray-600">Try adjusting your search or add a new application.</p>
+            <p className="text-gray-600">
+              {applications.length === 0 
+                ? "Get started by adding your first application." 
+                : "Try adjusting your search or add a new application."
+              }
+            </p>
           </div>
         )}
 
@@ -216,9 +215,7 @@ const Index = () => {
         <AddApplicationModal
           open={isAddModalOpen}
           onOpenChange={setIsAddModalOpen}
-          onAddApplication={(newApp) => {
-            setApplications(prev => [...prev, { ...newApp, id: Date.now().toString() }]);
-          }}
+          onAddApplication={handleAddApplication}
         />
 
         <SettingsModal
