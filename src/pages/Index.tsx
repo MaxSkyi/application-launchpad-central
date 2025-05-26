@@ -7,14 +7,29 @@ import { ApplicationCard } from "@/components/ApplicationCard";
 import { AddApplicationModal } from "@/components/AddApplicationModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { FunctionalSettingsModal } from "@/components/FunctionalSettingsModal";
+import { EditApplicationModal } from "@/components/EditApplicationModal";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { useApplications } from "@/hooks/useApplications";
 import { useSettings } from "@/hooks/useSettings";
 import { useToast } from "@/hooks/use-toast";
 
 const categories = ["All", "Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
 
+interface Application {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  size: string;
+  dateAdded: string;
+  category: string;
+  tags: string[];
+  executable: string;
+  fileName?: string;
+}
+
 const Index = () => {
-  const { applications, addApplication, removeApplication } = useApplications();
+  const { applications, addApplication, removeApplication, updateApplication } = useApplications();
   const { settings } = useSettings();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,6 +37,8 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">(settings.defaultView);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [editingApplication, setEditingApplication] = useState<Application | null>(null);
+  const [deletingApplication, setDeletingApplication] = useState<Application | null>(null);
 
   // Update view mode when settings change
   useEffect(() => {
@@ -36,7 +53,7 @@ const Index = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleLaunchApp = (app: any) => {
+  const handleLaunchApp = (app: Application) => {
     console.log(`Launching ${app.name}...`);
     toast({
       title: "Application Launched",
@@ -44,21 +61,33 @@ const Index = () => {
     });
   };
 
-  const handleDeleteApp = (appId: string) => {
-    const app = applications.find(a => a.id === appId);
-    
+  const handleEditApp = (app: Application) => {
+    setEditingApplication(app);
+  };
+
+  const handleDeleteApp = (app: Application) => {
     if (settings.confirmDeletes) {
-      // In a real app, you'd show a confirmation dialog here
-      // For now, we'll just show a toast asking for confirmation
-      const confirmed = window.confirm(`Are you sure you want to delete "${app?.name}"?`);
-      if (!confirmed) return;
+      setDeletingApplication(app);
+    } else {
+      performDelete(app);
     }
-    
-    removeApplication(appId);
+  };
+
+  const performDelete = (app: Application) => {
+    removeApplication(app.id);
     toast({
       title: "Application Removed",
-      description: `${app?.name || 'Application'} has been removed from the hub.`,
+      description: `${app.name} has been removed from the hub.`,
       variant: "destructive",
+    });
+    setDeletingApplication(null);
+  };
+
+  const handleUpdateApplication = (id: string, updates: Partial<Application>) => {
+    updateApplication(id, updates);
+    toast({
+      title: "Application Updated",
+      description: "Application details have been saved successfully.",
     });
   };
 
@@ -209,7 +238,8 @@ const Index = () => {
                 application={app}
                 viewMode={viewMode}
                 onLaunch={() => handleLaunchApp(app)}
-                onDelete={() => handleDeleteApp(app.id)}
+                onEdit={() => handleEditApp(app)}
+                onDelete={() => handleDeleteApp(app)}
               />
             ))}
           </div>
@@ -236,6 +266,20 @@ const Index = () => {
         <FunctionalSettingsModal
           open={isSettingsOpen}
           onOpenChange={setIsSettingsOpen}
+        />
+
+        <EditApplicationModal
+          open={!!editingApplication}
+          onOpenChange={() => setEditingApplication(null)}
+          application={editingApplication}
+          onUpdateApplication={handleUpdateApplication}
+        />
+
+        <ConfirmDeleteDialog
+          open={!!deletingApplication}
+          onOpenChange={() => setDeletingApplication(null)}
+          applicationName={deletingApplication?.name || ""}
+          onConfirm={() => deletingApplication && performDelete(deletingApplication)}
         />
       </div>
     </div>

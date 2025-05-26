@@ -1,5 +1,5 @@
 
-import { Play, Trash2, Calendar, HardDrive, Tag } from "lucide-react";
+import { Play, Trash2, Calendar, HardDrive, Tag, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +20,11 @@ interface ApplicationCardProps {
   application: Application;
   viewMode: "grid" | "list";
   onLaunch: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }
 
-export const ApplicationCard = ({ application, viewMode, onLaunch, onDelete }: ApplicationCardProps) => {
+export const ApplicationCard = ({ application, viewMode, onLaunch, onEdit, onDelete }: ApplicationCardProps) => {
   if (viewMode === "list") {
     return (
       <Card className="hover:shadow-md transition-shadow">
@@ -55,6 +56,9 @@ export const ApplicationCard = ({ application, viewMode, onLaunch, onDelete }: A
               <Button size="sm" onClick={onLaunch}>
                 <Play className="h-4 w-4 mr-1" />
                 Launch
+              </Button>
+              <Button size="sm" variant="outline" onClick={onEdit}>
+                <Edit className="h-4 w-4" />
               </Button>
               <Button size="sm" variant="outline" onClick={onDelete}>
                 <Trash2 className="h-4 w-4" />
@@ -113,6 +117,9 @@ export const ApplicationCard = ({ application, viewMode, onLaunch, onDelete }: A
           <Button size="sm" className="flex-1" onClick={onLaunch}>
             <Play className="h-4 w-4 mr-1" />
             Launch
+          </Button>
+          <Button size="sm" variant="outline" onClick={onEdit}>
+            <Edit className="h-4 w-4" />
           </Button>
           <Button size="sm" variant="outline" onClick={onDelete}>
             <Trash2 className="h-4 w-4" />
