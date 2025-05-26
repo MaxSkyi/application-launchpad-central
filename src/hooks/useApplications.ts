@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { sampleApplications } from '@/utils/sampleData';
 
 interface Application {
   id: string;
@@ -28,7 +29,12 @@ export const useApplications = () => {
         setApplications(parsedApps);
       } catch (error) {
         console.error('Failed to parse stored applications:', error);
+        // If parsing fails, load sample data
+        setApplications(sampleApplications);
       }
+    } else {
+      // No stored data, load sample applications
+      setApplications(sampleApplications);
     }
   }, []);
 
