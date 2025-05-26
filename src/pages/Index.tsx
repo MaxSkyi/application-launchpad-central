@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, Grid, List, Settings, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,19 +6,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { AddApplicationModal } from "@/components/AddApplicationModal";
 import { SettingsModal } from "@/components/SettingsModal";
+import { FunctionalSettingsModal } from "@/components/FunctionalSettingsModal";
 import { useApplications } from "@/hooks/useApplications";
+import { useSettings } from "@/hooks/useSettings";
 import { useToast } from "@/hooks/use-toast";
 
 const categories = ["All", "Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
 
 const Index = () => {
   const { applications, addApplication, removeApplication } = useApplications();
+  const { settings } = useSettings();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(settings.defaultView);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Update view mode when settings change
+  useEffect(() => {
+    setViewMode(settings.defaultView);
+  }, [settings.defaultView]);
 
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,6 +46,14 @@ const Index = () => {
 
   const handleDeleteApp = (appId: string) => {
     const app = applications.find(a => a.id === appId);
+    
+    if (settings.confirmDeletes) {
+      // In a real app, you'd show a confirmation dialog here
+      // For now, we'll just show a toast asking for confirmation
+      const confirmed = window.confirm(`Are you sure you want to delete "${app?.name}"?`);
+      if (!confirmed) return;
+    }
+    
     removeApplication(appId);
     toast({
       title: "Application Removed",
@@ -218,7 +233,7 @@ const Index = () => {
           onAddApplication={handleAddApplication}
         />
 
-        <SettingsModal
+        <FunctionalSettingsModal
           open={isSettingsOpen}
           onOpenChange={setIsSettingsOpen}
         />
