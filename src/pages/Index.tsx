@@ -8,6 +8,8 @@ import { useApplications } from "@/hooks/useApplications";
 import { useSettings } from "@/hooks/useSettings";
 import { useToast } from "@/hooks/use-toast";
 import { launchApplication } from "@/utils/applicationLauncher";
+import { TerminalWindow } from "@/components/TerminalWindow";
+import { useTerminal } from "@/hooks/useTerminal";
 
 interface Application {
   id: string;
@@ -34,6 +36,7 @@ const Index = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingApplication, setEditingApplication] = useState<Application | null>(null);
   const [deletingApplication, setDeletingApplication] = useState<Application | null>(null);
+  const { terminalState, openTerminal, closeTerminal, addLog } = useTerminal();
 
   // Update view mode when settings change
   useEffect(() => {
@@ -52,7 +55,7 @@ const Index = () => {
     console.log(`Attempting to launch ${app.name}...`);
     
     try {
-      const success = await launchApplication(app);
+      const success = await launchApplication(app, openTerminal, addLog);
       
       if (success) {
         toast({
@@ -155,6 +158,13 @@ const Index = () => {
           deletingApplication={deletingApplication}
           onDeletingApplicationChange={setDeletingApplication}
           onConfirmDelete={performDelete}
+        />
+
+        <TerminalWindow
+          isOpen={terminalState.isOpen}
+          onClose={closeTerminal}
+          applicationName={terminalState.applicationName}
+          logs={terminalState.logs}
         />
       </div>
     </div>

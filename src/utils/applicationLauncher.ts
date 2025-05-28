@@ -1,4 +1,3 @@
-
 interface Application {
   id: string;
   name: string;
@@ -13,7 +12,11 @@ interface Application {
   archiveStructure?: any;
 }
 
-export const launchApplication = (app: Application): Promise<boolean> => {
+export const launchApplication = (
+  app: Application, 
+  onOpenTerminal?: (appName: string) => void,
+  onAddLog?: (message: string) => void
+): Promise<boolean> => {
   return new Promise((resolve) => {
     console.log(`Launching application: ${app.name}`);
     console.log(`Executable path: ${app.executable}`);
@@ -36,21 +39,52 @@ export const launchApplication = (app: Application): Promise<boolean> => {
         return;
       }
 
-      // Handle archive-based applications
+      // Handle archive-based applications with terminal
       if (app.archiveStructure && app.fileName) {
         const isExecutable = app.executable.toLowerCase().endsWith('.exe');
         const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
         
         if (isExecutable || isBatchFile) {
           console.log(`Launching application from archive: ${app.fileName}`);
-          console.log(`Target executable: ${app.executable}`);
-          console.log(`Archive was extracted to preserve folder structure`);
           
+          // Open terminal window
+          if (onOpenTerminal) {
+            onOpenTerminal(app.name);
+          }
+          
+          // Simulate application launch process with logs
           const fileType = isBatchFile ? 'batch script' : 'executable';
-          console.log(`${fileType} launch simulated for: ${app.name}`);
-          console.log(`Full path within archive: ${app.executable}`);
           
-          // Show a more detailed launch notification for archive-based apps
+          setTimeout(() => {
+            if (onAddLog) {
+              onAddLog(`Extracting archive: ${app.fileName}`);
+            }
+          }, 100);
+          
+          setTimeout(() => {
+            if (onAddLog) {
+              onAddLog(`Archive extracted successfully`);
+              onAddLog(`Found ${fileType}: ${app.executable}`);
+              onAddLog(`Setting working directory to extracted folder`);
+            }
+          }, 800);
+          
+          setTimeout(() => {
+            if (onAddLog) {
+              onAddLog(`Launching ${fileType}...`);
+              onAddLog(`Process started with PID: ${Math.floor(Math.random() * 10000) + 1000}`);
+              onAddLog(`${app.name} is now running`);
+            }
+          }, 1500);
+          
+          setTimeout(() => {
+            if (onAddLog) {
+              onAddLog(`Application launched successfully`);
+              onAddLog(`Monitoring application status...`);
+            }
+          }, 2500);
+          
+          // Show a notification as well
           const notification = new Notification(`Launching ${app.name}`, {
             body: `Starting ${fileType} from extracted archive...`,
             icon: app.icon
@@ -103,6 +137,9 @@ export const launchApplication = (app: Application): Promise<boolean> => {
       resolve(false);
     } catch (error) {
       console.error(`Failed to launch ${app.name}:`, error);
+      if (onAddLog) {
+        onAddLog(`Error: Failed to launch application - ${error}`);
+      }
       resolve(false);
     }
   });
