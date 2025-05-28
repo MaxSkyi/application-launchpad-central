@@ -1,73 +1,246 @@
-# Welcome to your Lovable project
 
-## Project info
+# Application Hub - Desktop Application Launcher
 
-**URL**: https://lovable.dev/projects/950ea7bb-4c51-4df0-a38d-be6dccabeee1
+A modern web-based application launcher for managing and launching your desktop applications, web apps, and scripts.
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+- **Multi-platform Support**: Launch Windows executables (.exe), batch scripts (.bat), web applications, and protocol handlers
+- **Smart Search**: Find applications quickly with intelligent search across names, descriptions, and tags
+- **Category Management**: Organize applications with built-in and custom categories
+- **Multiple Views**: Switch between grid and list views for optimal browsing
+- **Application Management**: Add, edit, and remove applications with detailed metadata
+- **Settings**: Customize default view, confirmation dialogs, and categories
 
-**Use Lovable**
+## 📋 How to Use
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/950ea7bb-4c51-4df0-a38d-be6dccabeee1) and start prompting.
+### Adding Applications
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Click the **"Add Application"** button in the top-right corner
+2. Fill in the application details:
+   - **Name**: Display name for your application
+   - **Description**: Brief description of what the application does
+   - **Icon URL**: URL to an icon image (or use placeholder)
+   - **Category**: Choose from existing categories or create custom ones
+   - **Tags**: Add searchable tags (comma-separated)
+   - **Executable Path**: Path to the application (see supported formats below)
+   - **File Size**: Approximate size of the application
 
-**Use your preferred IDE**
+### Supported Executable Formats
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+#### 1. Windows Desktop Applications (.exe)
+```
+notepad.exe
+C:\Program Files\MyApp\myapp.exe
+D:\Games\game.exe
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+#### 2. Batch Scripts (.bat)
+```
+startup.bat
+C:\Scripts\backup.bat
+deploy.bat
+```
 
-Follow these steps:
+#### 3. Web Applications
+```
+https://github.com
+https://code.visualstudio.com
+http://localhost:3000
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+#### 4. Protocol Handlers
+```
+vscode://file/C:/path/to/file
+steam://run/12345
+discord://
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🔧 Application Launch Behavior
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Current Implementation (Web Demo)
+Since this is a web-based application, actual desktop program launching is **simulated**:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+- **Desktop Apps (.exe, .bat)**: Shows launch notification and logs to console
+- **Web Apps**: Opens in new browser tab
+- **Protocol Handlers**: Attempts to open with system default handler
+
+### For Production Desktop Use
+
+To enable actual desktop application launching, this project would need to be packaged with:
+
+#### Option 1: Electron
+```bash
+npm install electron
+# Package as desktop app with native system access
+```
+
+#### Option 2: Tauri
+```bash
+npm install @tauri-apps/cli
+# Lightweight Rust-based desktop wrapper
+```
+
+#### Option 3: PWA with File System Access API
+```javascript
+// For modern browsers with filesystem permissions
+const fileHandle = await window.showOpenFilePicker();
+```
+
+## 📁 Project Structure for Desktop Integration
+
+For a production desktop version, organize your applications like this:
+
+```
+ApplicationHub/
+├── apps/                    # Application executables
+│   ├── utilities/
+│   │   ├── notepad.exe
+│   │   └── calculator.exe
+│   ├── development/
+│   │   ├── vscode.exe
+│   │   └── git-bash.bat
+│   └── games/
+│       └── mygame.exe
+├── scripts/                 # Batch scripts
+│   ├── backup.bat
+│   ├── deploy.bat
+│   └── startup.bat
+├── icons/                   # Application icons
+│   ├── notepad.png
+│   ├── vscode.png
+│   └── default.png
+└── config/
+    └── applications.json    # Application metadata
+```
+
+## ⚙️ Configuration Files
+
+### applications.json Example
+```json
+{
+  "applications": [
+    {
+      "id": "1",
+      "name": "Notepad",
+      "description": "Simple text editor",
+      "icon": "./icons/notepad.png",
+      "executable": "./apps/utilities/notepad.exe",
+      "category": "Utilities",
+      "tags": ["text", "editor"],
+      "size": "2.1 MB",
+      "dateAdded": "2024-01-15"
+    }
+  ]
+}
+```
+
+## 🛠️ Development
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+```bash
+git clone <repository-url>
+cd application-hub
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Building for Production
+```bash
+npm run build
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🔐 Security Considerations
 
-**Use GitHub Codespaces**
+### Web Version
+- Cannot execute local files due to browser security restrictions
+- Limited to opening URLs and protocol handlers
+- All desktop app launches are simulated
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Desktop Version (Electron/Tauri)
+- **Validate executable paths** before launching
+- **Sanitize user inputs** to prevent code injection
+- **Implement permission system** for sensitive operations
+- **Use allowlists** for permitted executable locations
 
-## What technologies are used for this project?
+## 🎨 Customization
 
-This project is built with:
+### Adding Custom Categories
+1. Go to Settings (gear icon)
+2. Navigate to "Custom Categories"
+3. Add your category name
+4. Save settings
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Changing Default View
+1. Open Settings
+2. Select preferred default view (Grid/List)
+3. Toggle delete confirmations if desired
 
-## How can I deploy this project?
+## 🐛 Troubleshooting
 
-Simply open [Lovable](https://lovable.dev/projects/950ea7bb-4c51-4df0-a38d-be6dccabeee1) and click on Share -> Publish.
+### Applications Won't Launch
+1. **Check executable path**: Ensure the path is correct and file exists
+2. **File permissions**: Verify you have permission to execute the file
+3. **Browser security**: Web version cannot launch local files
+4. **Notifications**: Allow notifications for launch feedback
 
-## Can I connect a custom domain to my Lovable project?
+### Missing Icons
+- Use full URLs for web-hosted icons
+- For local icons, ensure proper file paths
+- Fallback placeholder icons are provided
 
-Yes, you can!
+### Search Not Working
+- Check spelling and try partial matches
+- Search includes names, descriptions, and tags
+- Use category filters to narrow results
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📖 API Reference
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Application Interface
+```typescript
+interface Application {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  size: string;
+  dateAdded: string;
+  category: string;
+  tags: string[];
+  executable: string;
+  fileName?: string;
+}
+```
+
+### Launch Function
+```typescript
+launchApplication(app: Application): Promise<boolean>
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the troubleshooting section above
+2. Search existing GitHub issues
+3. Create a new issue with detailed description
+4. Include console logs and error messages
+
+---
+
+**Note**: This is a web-based demo. For production desktop use, package with Electron or Tauri for full system integration.

@@ -26,11 +26,20 @@ export const launchApplication = (app: Application): Promise<boolean> => {
         return;
       }
 
-      // Handle local file paths (desktop applications and batch files)
-      if (app.executable.startsWith('/') || app.executable.includes('\\')) {
-        const isExecutable = app.executable.toLowerCase().endsWith('.exe');
-        const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
-        
+      // Handle protocol handlers (e.g., vscode://file/path)
+      if (app.executable.includes('://') && !app.executable.startsWith('http')) {
+        console.log(`Opening protocol handler: ${app.executable}`);
+        window.location.href = app.executable;
+        resolve(true);
+        return;
+      }
+
+      // Handle local files (check for file extensions or path separators)
+      const isExecutable = app.executable.toLowerCase().endsWith('.exe');
+      const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
+      const isLocalPath = app.executable.startsWith('/') || app.executable.includes('\\') || isExecutable || isBatchFile;
+      
+      if (isLocalPath) {
         if (isExecutable) {
           console.log(`Attempting to launch desktop application: ${app.executable}`);
         } else if (isBatchFile) {
@@ -54,14 +63,6 @@ export const launchApplication = (app: Application): Promise<boolean> => {
           notification.close();
         }, 3000);
         
-        resolve(true);
-        return;
-      }
-
-      // Handle protocol handlers (e.g., vscode://file/path)
-      if (app.executable.includes('://')) {
-        console.log(`Opening protocol handler: ${app.executable}`);
-        window.location.href = app.executable;
         resolve(true);
         return;
       }
