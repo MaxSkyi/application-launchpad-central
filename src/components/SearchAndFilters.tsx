@@ -3,7 +3,7 @@ import { Search, Grid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const categories = ["All", "Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
+const defaultCategories = ["All", "Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
 
 interface SearchAndFiltersProps {
   searchTerm: string;
@@ -12,6 +12,7 @@ interface SearchAndFiltersProps {
   onCategoryChange: (category: string) => void;
   viewMode: "grid" | "list";
   onViewModeChange: (mode: "grid" | "list") => void;
+  customCategories?: string[];
 }
 
 export const SearchAndFilters = ({
@@ -21,7 +22,10 @@ export const SearchAndFilters = ({
   onCategoryChange,
   viewMode,
   onViewModeChange,
+  customCategories = [],
 }: SearchAndFiltersProps) => {
+  const allCategories = [...defaultCategories, ...customCategories];
+
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
       <div className="flex-1 relative">
@@ -34,8 +38,8 @@ export const SearchAndFilters = ({
         />
       </div>
       
-      <div className="flex items-center gap-2">
-        {categories.map(category => (
+      <div className="flex items-center gap-2 flex-wrap">
+        {allCategories.map(category => (
           <Button
             key={category}
             variant={selectedCategory === category ? "default" : "outline"}

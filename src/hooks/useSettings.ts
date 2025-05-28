@@ -1,28 +1,22 @@
 
 import { useState, useEffect } from 'react';
 
-export interface Settings {
-  theme: 'light' | 'dark' | 'system';
+interface Settings {
   defaultView: 'grid' | 'list';
-  autoLaunch: boolean;
-  showFileExtensions: boolean;
   confirmDeletes: boolean;
-  maxRecentApps: number;
+  customCategories: string[];
 }
 
-const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
+const defaultSettings: Settings = {
   defaultView: 'grid',
-  autoLaunch: false,
-  showFileExtensions: true,
   confirmDeletes: true,
-  maxRecentApps: 10,
+  customCategories: [],
 };
 
 const SETTINGS_KEY = 'application-hub-settings';
 
 export const useSettings = () => {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -30,9 +24,10 @@ export const useSettings = () => {
     if (stored) {
       try {
         const parsedSettings = JSON.parse(stored);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsedSettings });
+        setSettings({ ...defaultSettings, ...parsedSettings });
       } catch (error) {
         console.error('Failed to parse stored settings:', error);
+        setSettings(defaultSettings);
       }
     }
   }, []);
@@ -42,50 +37,17 @@ export const useSettings = () => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   }, [settings]);
 
-  const updateSetting = <K extends keyof Settings>(
-    key: K,
-    value: Settings[K]
-  ) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  const updateSettings = (updates: Partial<Settings>) => {
+    setSettings(prev => ({ ...prev, ...updates }));
   };
 
-  const resetSettings = () => {
-    setSettings(DEFAULT_SETTINGS);
-  };
-
-  const exportSettings = () => {
-    const dataStr = JSON.stringify(settings, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'application-hub-settings.json';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importSettings = (file: File) => {
-    return new Promise<void>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedSettings = JSON.parse(e.target?.result as string);
-          setSettings({ ...DEFAULT_SETTINGS, ...importedSettings });
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
-    });
+  const updateCustomCategories = (categories: string[]) => {
+    updateSettings({ customCategories: categories });
   };
 
   return {
     settings,
-    updateSetting,
-    resetSettings,
-    exportSettings,
-    importSettings,
+    updateSettings,
+    updateCustomCategories,
   };
 };

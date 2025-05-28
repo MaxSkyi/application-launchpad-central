@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { SearchAndFilters } from "@/components/SearchAndFilters";
@@ -8,6 +7,7 @@ import { ApplicationModals } from "@/components/ApplicationModals";
 import { useApplications } from "@/hooks/useApplications";
 import { useSettings } from "@/hooks/useSettings";
 import { useToast } from "@/hooks/use-toast";
+import { launchApplication } from "@/utils/applicationLauncher";
 
 interface Application {
   id: string;
@@ -47,12 +47,32 @@ const Index = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleLaunchApp = (app: Application) => {
-    console.log(`Launching ${app.name}...`);
-    toast({
-      title: "Application Launched",
-      description: `${app.name} is starting...`,
-    });
+  const handleLaunchApp = async (app: Application) => {
+    console.log(`Attempting to launch ${app.name}...`);
+    
+    try {
+      const success = await launchApplication(app);
+      
+      if (success) {
+        toast({
+          title: "Application Launched",
+          description: `${app.name} is starting...`,
+        });
+      } else {
+        toast({
+          title: "Launch Failed",
+          description: `Failed to launch ${app.name}. Please check the executable path.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Launch error:', error);
+      toast({
+        title: "Launch Error",
+        description: `An error occurred while launching ${app.name}.`,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditApp = (app: Application) => {
@@ -108,6 +128,7 @@ const Index = () => {
           onCategoryChange={setSelectedCategory}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          customCategories={settings.customCategories}
         />
 
         <StatsCards applications={applications} />
