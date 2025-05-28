@@ -26,17 +26,27 @@ export const launchApplication = (app: Application): Promise<boolean> => {
         return;
       }
 
-      // Handle local file paths (desktop applications)
+      // Handle local file paths (desktop applications and batch files)
       if (app.executable.startsWith('/') || app.executable.includes('\\')) {
-        console.log(`Attempting to launch desktop application: ${app.executable}`);
+        const isExecutable = app.executable.toLowerCase().endsWith('.exe');
+        const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
+        
+        if (isExecutable) {
+          console.log(`Attempting to launch desktop application: ${app.executable}`);
+        } else if (isBatchFile) {
+          console.log(`Attempting to launch batch file: ${app.executable}`);
+        } else {
+          console.log(`Attempting to launch local file: ${app.executable}`);
+        }
         
         // In a real desktop environment, this would use electron or tauri APIs
         // For web demo, we'll simulate the launch
-        console.log(`Desktop application launch simulated for: ${app.name}`);
+        const fileType = isBatchFile ? 'batch script' : isExecutable ? 'desktop application' : 'local file';
+        console.log(`${fileType} launch simulated for: ${app.name}`);
         
         // Show a simulated launch notification
         const notification = new Notification(`Launching ${app.name}`, {
-          body: `Starting ${app.name}...`,
+          body: `Starting ${fileType}...`,
           icon: app.icon
         });
         
