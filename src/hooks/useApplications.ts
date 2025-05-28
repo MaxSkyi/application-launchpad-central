@@ -13,6 +13,7 @@ interface Application {
   tags: string[];
   executable: string;
   fileName?: string;
+  archiveStructure?: any;
 }
 
 const STORAGE_KEY = 'application-hub-apps';

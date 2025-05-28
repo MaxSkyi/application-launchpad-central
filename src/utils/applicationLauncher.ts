@@ -10,12 +10,14 @@ interface Application {
   tags: string[];
   executable: string;
   fileName?: string;
+  archiveStructure?: any;
 }
 
 export const launchApplication = (app: Application): Promise<boolean> => {
   return new Promise((resolve) => {
     console.log(`Launching application: ${app.name}`);
     console.log(`Executable path: ${app.executable}`);
+    console.log(`Archive structure:`, app.archiveStructure);
 
     try {
       // Handle web applications (URLs)
@@ -34,7 +36,36 @@ export const launchApplication = (app: Application): Promise<boolean> => {
         return;
       }
 
-      // Handle local files (check for file extensions or path separators)
+      // Handle archive-based applications
+      if (app.archiveStructure && app.fileName) {
+        const isExecutable = app.executable.toLowerCase().endsWith('.exe');
+        const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
+        
+        if (isExecutable || isBatchFile) {
+          console.log(`Launching application from archive: ${app.fileName}`);
+          console.log(`Target executable: ${app.executable}`);
+          console.log(`Archive was extracted to preserve folder structure`);
+          
+          const fileType = isBatchFile ? 'batch script' : 'executable';
+          console.log(`${fileType} launch simulated for: ${app.name}`);
+          console.log(`Full path within archive: ${app.executable}`);
+          
+          // Show a more detailed launch notification for archive-based apps
+          const notification = new Notification(`Launching ${app.name}`, {
+            body: `Starting ${fileType} from extracted archive...`,
+            icon: app.icon
+          });
+          
+          setTimeout(() => {
+            notification.close();
+          }, 3000);
+          
+          resolve(true);
+          return;
+        }
+      }
+
+      // Handle traditional local files (legacy support)
       const isExecutable = app.executable.toLowerCase().endsWith('.exe');
       const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
       const isLocalPath = app.executable.startsWith('/') || app.executable.includes('\\') || isExecutable || isBatchFile;

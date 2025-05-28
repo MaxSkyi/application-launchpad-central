@@ -20,6 +20,7 @@ interface Application {
   tags: string[];
   executable: string;
   fileName?: string;
+  archiveStructure?: any;
 }
 
 const Index = () => {
