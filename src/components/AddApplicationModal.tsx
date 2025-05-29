@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Upload, FileArchive, X, Folder, File } from "lucide-react";
 import {
@@ -13,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/hooks/useSettings";
+import { readArchiveContents, findExecutableFiles } from "@/utils/archiveReader";
 
 interface AddApplicationModalProps {
   open: boolean;
@@ -29,11 +30,13 @@ interface FileStructure {
   name: string;
   type: 'file' | 'folder';
   path: string;
+  size?: number;
   children?: FileStructure[];
 }
 
 export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: AddApplicationModalProps) => {
   const { toast } = useToast();
+  const { settings } = useSettings();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -46,6 +49,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedStructure, setExtractedStructure] = useState<FileStructure | null>(null);
   const [selectedExecutable, setSelectedExecutable] = useState<string>("");
+  const [availableExecutables, setAvailableExecutables] = useState<string[]>([]);
 
   const validateFile = (file: File): boolean => {
     const extension = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -70,52 +74,33 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     return true;
   };
 
-  // Simulate archive extraction and folder structure analysis
-  const simulateArchiveExtraction = (fileName: string): FileStructure => {
-    const baseName = fileName.replace(/\.(zip|rar|tar|7z|gz)$/i, '');
-    
-    // Create a realistic folder structure simulation
-    const structure: FileStructure = {
-      name: baseName,
-      type: 'folder',
-      path: baseName,
-      children: [
-        {
-          name: 'bin',
-          type: 'folder',
-          path: `${baseName}/bin`,
-          children: [
-            { name: 'app.exe', type: 'file', path: `${baseName}/bin/app.exe` },
-            { name: 'launcher.bat', type: 'file', path: `${baseName}/bin/launcher.bat` }
-          ]
-        },
-        {
-          name: 'data',
-          type: 'folder',
-          path: `${baseName}/data`,
-          children: [
-            { name: 'config.json', type: 'file', path: `${baseName}/data/config.json` }
-          ]
-        },
-        { name: 'main.exe', type: 'file', path: `${baseName}/main.exe` },
-        { name: 'start.bat', type: 'file', path: `${baseName}/start.bat` },
-        { name: 'readme.txt', type: 'file', path: `${baseName}/readme.txt` }
-      ]
-    };
-
-    return structure;
+  const formatFileSize = (bytes?: number): string => {
+    if (!bytes) return '';
+    const mb = bytes / (1024 * 1024);
+    if (mb < 1) {
+      return `${Math.round(bytes / 1024)} KB`;
+    }
+    return `${mb.toFixed(1)} MB`;
   };
 
   const processFile = async (file: File) => {
     setIsProcessing(true);
     
     try {
-      // Simulate file processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log(`Processing archive in temp directory: ${settings.tempDirectory}`);
       
-      // Extract and analyze archive structure
-      const structure = simulateArchiveExtraction(file.name);
+      // Read actual archive contents
+      const structure = await readArchiveContents(file);
+      
+      if (!structure) {
+        throw new Error('Failed to read archive contents');
+      }
+      
       setExtractedStructure(structure);
+      
+      // Find all executable files in the archive
+      const executables = findExecutableFiles(structure);
+      setAvailableExecutables(executables);
       
       // Auto-populate form fields
       const fileName = file.name.replace(/\.(zip|rar|tar|7z|gz)$/i, '');
@@ -128,7 +113,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
 
       toast({
         title: "Archive Processed",
-        description: `${file.name} has been extracted and analyzed.`,
+        description: `${file.name} has been read and analyzed. Found ${executables.length} executable files.`,
       });
     } catch (error) {
       toast({
@@ -136,6 +121,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
         description: "Failed to process the archive. Please try again.",
         variant: "destructive",
       });
+      console.error('Archive processing error:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -143,7 +129,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
 
   const renderFileTree = (structure: FileStructure, level: number = 0): JSX.Element => {
     const isExecutable = structure.type === 'file' && 
-      (structure.name.endsWith('.exe') || structure.name.endsWith('.bat'));
+      (structure.name.endsWith('.exe') || structure.name.endsWith('.bat') || structure.name.endsWith('.sh'));
     
     return (
       <div key={structure.path} style={{ marginLeft: `${level * 20}px` }}>
@@ -166,8 +152,13 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
           <span className={`text-sm ${isExecutable ? 'font-medium text-green-700' : ''}`}>
             {structure.name}
           </span>
+          {structure.size && (
+            <span className="text-xs text-gray-500 ml-auto">
+              {formatFileSize(structure.size)}
+            </span>
+          )}
           {isExecutable && (
-            <span className="text-xs text-green-600 ml-auto">Executable</span>
+            <span className="text-xs text-green-600 ml-1">Executable</span>
           )}
         </div>
         {structure.children?.map(child => renderFileTree(child, level + 1))}
@@ -220,6 +211,8 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
       return;
     }
 
+    console.log(`Archive will be stored in: ${settings.storageDirectory}`);
+
     const newApp = {
       name: formData.name,
       description: formData.description || "No description provided",
@@ -230,7 +223,9 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
       tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
       executable: selectedExecutable,
       fileName: selectedFile.name,
-      archiveStructure: extractedStructure
+      archiveStructure: extractedStructure,
+      storageDirectory: settings.storageDirectory,
+      tempDirectory: settings.tempDirectory
     };
 
     onAddApplication(newApp);
@@ -241,10 +236,11 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     setSelectedFile(null);
     setExtractedStructure(null);
     setSelectedExecutable("");
+    setAvailableExecutables([]);
     
     toast({
       title: "Application Added",
-      description: `${newApp.name} has been added to your hub.`,
+      description: `${newApp.name} has been added to your hub and will be stored in ${settings.storageDirectory}.`,
     });
   };
 
@@ -323,19 +319,24 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
                 </div>
               </div>
 
-              {/* File Structure Display */}
+              {/* Real Archive Contents Display */}
               {extractedStructure && (
                 <div className="space-y-2">
                   <Label>Archive Contents - Select Executable</Label>
                   <div className="border rounded-lg p-4 max-h-64 overflow-y-auto bg-gray-50">
                     <p className="text-sm text-gray-600 mb-2">
-                      Click on an .exe or .bat file to select it as the main executable:
+                      Real archive contents from {selectedFile?.name}. Found {availableExecutables.length} executable files:
                     </p>
                     {renderFileTree(extractedStructure)}
                   </div>
                   {selectedExecutable && (
                     <p className="text-sm text-green-600">
-                      Selected: {selectedExecutable}
+                      Selected executable: {selectedExecutable}
+                    </p>
+                  )}
+                  {availableExecutables.length === 0 && (
+                    <p className="text-sm text-orange-600">
+                      No executable files found in this archive. Please select a different archive.
                     </p>
                   )}
                 </div>

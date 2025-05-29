@@ -5,12 +5,20 @@ interface Settings {
   defaultView: 'grid' | 'list';
   confirmDeletes: boolean;
   customCategories: string[];
+  storageDirectory: string;
+  tempDirectory: string;
+  autoCleanTemp: boolean;
+  enableNotifications: boolean;
 }
 
 const defaultSettings: Settings = {
   defaultView: 'grid',
   confirmDeletes: true,
   customCategories: [],
+  storageDirectory: "/Users/Documents/ApplicationHub/storage",
+  tempDirectory: "/Users/Documents/ApplicationHub/temp",
+  autoCleanTemp: true,
+  enableNotifications: true,
 };
 
 const SETTINGS_KEY = 'application-hub-settings';
