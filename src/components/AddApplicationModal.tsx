@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
-import { readArchiveContents, findExecutableFiles } from "@/utils/archiveReader";
+import { readArchiveContents, findExecutableFiles, getFileIcon } from "@/utils/archiveReader";
 
 interface AddApplicationModalProps {
   open: boolean;
@@ -22,9 +22,6 @@ interface AddApplicationModalProps {
 }
 
 const categories = ["Development", "Graphics", "Analytics", "Media", "Utilities", "Games", "Productivity"];
-
-const ALLOWED_EXTENSIONS = ['.zip', '.rar', '.tar', '.7z', '.gz'];
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
 interface FileStructure {
   name: string;
@@ -53,19 +50,19 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
 
   const validateFile = (file: File): boolean => {
     const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+    if (!settings.allowedExtensions.includes(extension)) {
       toast({
         title: "Invalid File Type",
-        description: `Please upload a file with one of these extensions: ${ALLOWED_EXTENSIONS.join(', ')}`,
+        description: `Please upload a file with one of these extensions: ${settings.allowedExtensions.join(', ')}`,
         variant: "destructive",
       });
       return false;
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > settings.maxFileSize) {
       toast({
         title: "File Too Large",
-        description: `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
+        description: `File size must be less than ${settings.maxFileSize / (1024 * 1024)}MB`,
         variant: "destructive",
       });
       return false;
@@ -88,8 +85,9 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     
     try {
       console.log(`Processing archive in temp directory: ${settings.tempDirectory}`);
+      console.log(`Will be stored in: ${settings.storageDirectory}`);
       
-      // Read actual archive contents
+      // Read actual archive contents using improved reader
       const structure = await readArchiveContents(file);
       
       if (!structure) {
@@ -111,14 +109,20 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
         name: prev.name || cleanName,
       }));
 
+      // Auto-select the first executable if only one is found
+      if (executables.length === 1) {
+        setSelectedExecutable(executables[0]);
+        setFormData(prev => ({ ...prev, mainExecutable: executables[0] }));
+      }
+
       toast({
-        title: "Archive Processed",
-        description: `${file.name} has been read and analyzed. Found ${executables.length} executable files.`,
+        title: "Archive Analyzed Successfully",
+        description: `${file.name} contains ${executables.length} executable files. Real archive structure detected.`,
       });
     } catch (error) {
       toast({
-        title: "Processing Error",
-        description: "Failed to process the archive. Please try again.",
+        title: "Archive Processing Error",
+        description: "Failed to analyze the archive. Please ensure it's a valid archive file.",
         variant: "destructive",
       });
       console.error('Archive processing error:', error);
@@ -135,8 +139,8 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
       <div key={structure.path} style={{ marginLeft: `${level * 20}px` }}>
         <div 
           className={`flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-gray-100 ${
-            selectedExecutable === structure.path ? 'bg-blue-100' : ''
-          }`}
+            selectedExecutable === structure.path ? 'bg-blue-100 border border-blue-300' : ''
+          } ${isExecutable ? 'hover:bg-green-50' : ''}`}
           onClick={() => {
             if (isExecutable) {
               setSelectedExecutable(structure.path);
@@ -147,7 +151,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
           {structure.type === 'folder' ? (
             <Folder className="h-4 w-4 text-blue-500" />
           ) : (
-            <File className={`h-4 w-4 ${isExecutable ? 'text-green-500' : 'text-gray-500'}`} />
+            <span className="text-sm">{getFileIcon(structure.name)}</span>
           )}
           <span className={`text-sm ${isExecutable ? 'font-medium text-green-700' : ''}`}>
             {structure.name}
@@ -158,7 +162,9 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
             </span>
           )}
           {isExecutable && (
-            <span className="text-xs text-green-600 ml-1">Executable</span>
+            <span className="text-xs bg-green-100 text-green-600 px-1 rounded ml-1">
+              Executable
+            </span>
           )}
         </div>
         {structure.children?.map(child => renderFileTree(child, level + 1))}
@@ -212,6 +218,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     }
 
     console.log(`Archive will be stored in: ${settings.storageDirectory}`);
+    console.log(`Temp extraction directory: ${settings.tempDirectory}`);
 
     const newApp = {
       name: formData.name,
@@ -239,8 +246,8 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     setAvailableExecutables([]);
     
     toast({
-      title: "Application Added",
-      description: `${newApp.name} has been added to your hub and will be stored in ${settings.storageDirectory}.`,
+      title: "Application Added Successfully",
+      description: `${newApp.name} has been added. Archive will be stored in ${settings.storageDirectory}.`,
     });
   };
 
@@ -248,6 +255,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
     setSelectedFile(null);
     setExtractedStructure(null);
     setSelectedExecutable("");
+    setAvailableExecutables([]);
     setFormData(prev => ({ ...prev, name: "", mainExecutable: "" }));
   };
 
@@ -296,20 +304,20 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
                     <div>
                       <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-gray-600 mb-2">
-                        {isProcessing ? "Processing archive..." : "Drag & drop an archive file here"}
+                        {isProcessing ? "Analyzing archive..." : "Drag & drop an archive file here"}
                       </p>
                       <p className="text-sm text-gray-500 mb-4">
-                        Supports ZIP, RAR, TAR, 7Z, GZ formats (max 500MB)
+                        Supports {settings.allowedExtensions.join(', ')} formats (max {Math.round(settings.maxFileSize / (1024 * 1024))}MB)
                       </p>
                       <Button type="button" variant="outline" asChild disabled={isProcessing}>
                         <label htmlFor="file-upload" className="cursor-pointer">
-                          {isProcessing ? "Processing..." : "Browse Files"}
+                          {isProcessing ? "Analyzing..." : "Browse Files"}
                         </label>
                       </Button>
                       <input
                         id="file-upload"
                         type="file"
-                        accept=".zip,.rar,.tar,.7z,.gz"
+                        accept={settings.allowedExtensions.join(',')}
                         onChange={handleFileSelect}
                         className="hidden"
                         disabled={isProcessing}
@@ -322,22 +330,29 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
               {/* Real Archive Contents Display */}
               {extractedStructure && (
                 <div className="space-y-2">
-                  <Label>Archive Contents - Select Executable</Label>
+                  <Label>Real Archive Contents - Select Executable</Label>
                   <div className="border rounded-lg p-4 max-h-64 overflow-y-auto bg-gray-50">
-                    <p className="text-sm text-gray-600 mb-2">
-                      Real archive contents from {selectedFile?.name}. Found {availableExecutables.length} executable files:
+                    <p className="text-sm text-gray-600 mb-3">
+                      📦 Actual contents from <strong>{selectedFile?.name}</strong>
+                    </p>
+                    <p className="text-sm text-green-600 mb-2">
+                      ✅ Found {availableExecutables.length} executable files
                     </p>
                     {renderFileTree(extractedStructure)}
                   </div>
                   {selectedExecutable && (
-                    <p className="text-sm text-green-600">
-                      Selected executable: {selectedExecutable}
-                    </p>
+                    <div className="bg-green-50 border border-green-200 rounded p-2">
+                      <p className="text-sm text-green-700">
+                        🎯 Selected: <strong>{selectedExecutable}</strong>
+                      </p>
+                    </div>
                   )}
                   {availableExecutables.length === 0 && (
-                    <p className="text-sm text-orange-600">
-                      No executable files found in this archive. Please select a different archive.
-                    </p>
+                    <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                      <p className="text-sm text-orange-600">
+                        ⚠️ No executable files found in this archive. Please select a different archive.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
@@ -392,6 +407,17 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
                   placeholder="e.g., editor, development, productivity"
                 />
               </div>
+
+              {/* Storage Information */}
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <h4 className="text-sm font-medium text-blue-800 mb-1">Storage Settings</h4>
+                <p className="text-xs text-blue-600">
+                  📁 Storage: {settings.storageDirectory}
+                </p>
+                <p className="text-xs text-blue-600">
+                  🗂️ Temp: {settings.tempDirectory}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -404,7 +430,7 @@ export const AddApplicationModal = ({ open, onOpenChange, onAddApplication }: Ad
               className="flex-1" 
               disabled={!selectedFile || !formData.name || !formData.category || !selectedExecutable || isProcessing}
             >
-              {isProcessing ? "Processing..." : "Add Application"}
+              {isProcessing ? "Analyzing..." : "Add Application"}
             </Button>
           </div>
         </form>

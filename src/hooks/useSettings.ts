@@ -9,6 +9,8 @@ interface Settings {
   tempDirectory: string;
   autoCleanTemp: boolean;
   enableNotifications: boolean;
+  maxFileSize: number;
+  allowedExtensions: string[];
 }
 
 const defaultSettings: Settings = {
@@ -19,6 +21,8 @@ const defaultSettings: Settings = {
   tempDirectory: "/Users/Documents/ApplicationHub/temp",
   autoCleanTemp: true,
   enableNotifications: true,
+  maxFileSize: 500 * 1024 * 1024, // 500MB
+  allowedExtensions: ['.zip', '.rar', '.tar', '.7z', '.gz'],
 };
 
 const SETTINGS_KEY = 'application-hub-settings';
