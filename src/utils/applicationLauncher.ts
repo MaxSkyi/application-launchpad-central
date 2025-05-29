@@ -72,13 +72,14 @@ export const launchApplication = (
           setTimeout(() => {
             if (onAddLog) {
               onAddLog(`Launching ${fileType}...`);
-              onAddLog(`Process started with PID: ${Math.floor(Math.random() * 10000) + 1000}`);
-              onAddLog(`${app.name} is now running`);
             }
           }, 1500);
           
           setTimeout(() => {
             if (onAddLog) {
+              const processId = Math.floor(Math.random() * 10000) + 1000;
+              onAddLog(`Process started with PID: ${processId}`);
+              onAddLog(`${app.name} is now running`);
               onAddLog(`Application launched successfully`);
               onAddLog(`Monitoring application status...`);
             }

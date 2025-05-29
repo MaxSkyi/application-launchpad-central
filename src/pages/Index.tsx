@@ -36,7 +36,7 @@ const Index = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingApplication, setEditingApplication] = useState<Application | null>(null);
   const [deletingApplication, setDeletingApplication] = useState<Application | null>(null);
-  const { terminalState, openTerminal, closeTerminal, addLog } = useTerminal();
+  const { terminalState, openTerminal, closeTerminal, addLog, stopApplication } = useTerminal();
 
   // Update view mode when settings change
   useEffect(() => {
@@ -77,6 +77,15 @@ const Index = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleStopApplication = () => {
+    stopApplication();
+    toast({
+      title: "Application Stopped",
+      description: `${terminalState.applicationName} has been terminated.`,
+      variant: "destructive",
+    });
   };
 
   const handleEditApp = (app: Application) => {
@@ -165,6 +174,8 @@ const Index = () => {
           onClose={closeTerminal}
           applicationName={terminalState.applicationName}
           logs={terminalState.logs}
+          isRunning={terminalState.isRunning}
+          onStop={handleStopApplication}
         />
       </div>
     </div>

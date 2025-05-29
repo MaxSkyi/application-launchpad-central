@@ -2,20 +2,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Minimize2, Maximize2 } from 'lucide-react';
+import { X, Minimize2, Maximize2, Stop } from 'lucide-react';
 
 interface TerminalWindowProps {
   isOpen: boolean;
   onClose: () => void;
   applicationName: string;
   logs: string[];
+  isRunning: boolean;
+  onStop: () => void;
 }
 
 export const TerminalWindow: React.FC<TerminalWindowProps> = ({
   isOpen,
   onClose,
   applicationName,
-  logs
+  logs,
+  isRunning,
+  onStop
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -34,9 +38,20 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({
       >
         <DialogHeader className="flex flex-row items-center justify-between border-b border-gray-700 pb-2">
           <DialogTitle className="text-green-400 font-mono text-sm">
-            Terminal - {applicationName}
+            Terminal - {applicationName} {isRunning && <span className="text-yellow-400">[Running]</span>}
           </DialogTitle>
           <div className="flex gap-2">
+            {isRunning && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onStop}
+                className="h-6 w-6 p-0 text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                title="Stop Application"
+              >
+                <Stop className="h-3 w-3" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -75,7 +90,12 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({
         
         <div className="flex justify-between items-center text-xs text-gray-500 border-t border-gray-700 pt-2">
           <span>Application Terminal</span>
-          <span>{logs.length} log entries</span>
+          <div className="flex gap-4">
+            <span>{logs.length} log entries</span>
+            <span className={isRunning ? "text-green-400" : "text-red-400"}>
+              Status: {isRunning ? "Running" : "Stopped"}
+            </span>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
