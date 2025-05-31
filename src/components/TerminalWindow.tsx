@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Minimize2, Maximize2, Stop } from 'lucide-react';
+import { X, Minimize2, Maximize2, Square } from 'lucide-react';
 
 interface TerminalWindowProps {
   isOpen: boolean;
@@ -49,7 +49,7 @@ export const TerminalWindow: React.FC<TerminalWindowProps> = ({
                 className="h-6 w-6 p-0 text-red-400 hover:bg-red-900/20 hover:text-red-300"
                 title="Stop Application"
               >
-                <Stop className="h-3 w-3" />
+                <Square className="h-3 w-3" />
               </Button>
             )}
             <Button
