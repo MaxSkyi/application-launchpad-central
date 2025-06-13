@@ -7,23 +7,19 @@
   },
   "files": [
     "dist/**/*",
-    "electron/**/*",
-    "node_modules/**/*"
+    "electron/**/*"
   ],
   "extraMetadata": {
     "main": "electron/main.js"
   },
   "win": {
-    "target": "nsis",
-    "icon": "public/favicon.ico"
+    "target": "nsis"
   },
   "mac": {
-    "target": "dmg",
-    "icon": "public/favicon.ico"
+    "target": "dmg"
   },
   "linux": {
-    "target": "AppImage",
-    "icon": "public/favicon.ico"
+    "target": "AppImage"
   },
   "nsis": {
     "oneClick": false,
