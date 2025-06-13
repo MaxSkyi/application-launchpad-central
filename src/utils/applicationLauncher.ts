@@ -1,3 +1,4 @@
+
 interface Application {
   id: string;
   name: string;
@@ -12,17 +13,75 @@ interface Application {
   archiveStructure?: any;
 }
 
+// Проверяем, запущены ли мы в Electron
+const isElectron = () => {
+  return !!(window as any).electronAPI;
+};
+
 export const launchApplication = (
   app: Application, 
   onOpenTerminal?: (appName: string) => void,
   onAddLog?: (message: string) => void
 ): Promise<boolean> => {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     console.log(`Launching application: ${app.name}`);
     console.log(`Executable path: ${app.executable}`);
-    console.log(`Archive structure:`, app.archiveStructure);
 
     try {
+      // Если запущены в Electron, используем реальный запуск
+      if (isElectron()) {
+        const electronAPI = (window as any).electronAPI;
+        
+        console.log('Using Electron API for real application launch');
+        
+        // Открываем терминальное окно
+        if (onOpenTerminal) {
+          onOpenTerminal(app.name);
+        }
+        
+        // Добавляем начальные логи
+        if (onAddLog) {
+          onAddLog(`Preparing to launch ${app.name}...`);
+          onAddLog(`Executable: ${app.executable}`);
+        }
+        
+        // Запускаем приложение через Electron
+        const result = await electronAPI.launchApplication({
+          id: app.id,
+          name: app.name,
+          executable: app.executable
+        });
+        
+        if (result.success) {
+          if (onAddLog) {
+            onAddLog(`Process started with PID: ${result.pid}`);
+            onAddLog(`Process ID: ${result.processId}`);
+            onAddLog(result.message);
+          }
+          
+          // Подписываемся на логи процесса
+          electronAPI.onApplicationLog((logData: any) => {
+            if (onAddLog) {
+              const prefix = logData.type === 'stderr' ? '[ERROR]' : 
+                           logData.type === 'system' ? '[SYSTEM]' : '[OUTPUT]';
+              onAddLog(`${prefix} ${logData.message.trim()}`);
+            }
+          });
+          
+          resolve(true);
+        } else {
+          if (onAddLog) {
+            onAddLog(`Failed to launch: ${result.error}`);
+          }
+          resolve(false);
+        }
+        
+        return;
+      }
+
+      // Fallback для веб-версии (симуляция)
+      console.log('Running in browser mode - simulating launch');
+      
       // Handle web applications (URLs)
       if (app.executable.startsWith('http://') || app.executable.startsWith('https://')) {
         console.log(`Opening web application: ${app.executable}`);
@@ -39,95 +98,45 @@ export const launchApplication = (
         return;
       }
 
-      // Handle archive-based applications with terminal
-      if (app.archiveStructure && app.fileName) {
-        const isExecutable = app.executable.toLowerCase().endsWith('.exe');
-        const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
-        
-        if (isExecutable || isBatchFile) {
-          console.log(`Launching application from archive: ${app.fileName}`);
-          
-          // Open terminal window
-          if (onOpenTerminal) {
-            onOpenTerminal(app.name);
-          }
-          
-          // Simulate application launch process with logs
-          const fileType = isBatchFile ? 'batch script' : 'executable';
-          
-          setTimeout(() => {
-            if (onAddLog) {
-              onAddLog(`Extracting archive: ${app.fileName}`);
-            }
-          }, 100);
-          
-          setTimeout(() => {
-            if (onAddLog) {
-              onAddLog(`Archive extracted successfully`);
-              onAddLog(`Found ${fileType}: ${app.executable}`);
-              onAddLog(`Setting working directory to extracted folder`);
-            }
-          }, 800);
-          
-          setTimeout(() => {
-            if (onAddLog) {
-              onAddLog(`Launching ${fileType}...`);
-            }
-          }, 1500);
-          
-          setTimeout(() => {
-            if (onAddLog) {
-              const processId = Math.floor(Math.random() * 10000) + 1000;
-              onAddLog(`Process started with PID: ${processId}`);
-              onAddLog(`${app.name} is now running`);
-              onAddLog(`Application launched successfully`);
-              onAddLog(`Monitoring application status...`);
-            }
-          }, 2500);
-          
-          // Show a notification as well
-          const notification = new Notification(`Launching ${app.name}`, {
-            body: `Starting ${fileType} from extracted archive...`,
-            icon: app.icon
-          });
-          
-          setTimeout(() => {
-            notification.close();
-          }, 3000);
-          
-          resolve(true);
-          return;
-        }
-      }
-
-      // Handle traditional local files (legacy support)
+      // Симуляция для локальных файлов в браузере
       const isExecutable = app.executable.toLowerCase().endsWith('.exe');
       const isBatchFile = app.executable.toLowerCase().endsWith('.bat');
-      const isLocalPath = app.executable.startsWith('/') || app.executable.includes('\\') || isExecutable || isBatchFile;
+      const isPythonFile = app.executable.toLowerCase().endsWith('.py');
       
-      if (isLocalPath) {
-        if (isExecutable) {
-          console.log(`Attempting to launch desktop application: ${app.executable}`);
-        } else if (isBatchFile) {
-          console.log(`Attempting to launch batch file: ${app.executable}`);
-        } else {
-          console.log(`Attempting to launch local file: ${app.executable}`);
+      if (isExecutable || isBatchFile || isPythonFile || app.executable.includes('\\') || app.executable.includes('/')) {
+        console.log(`Simulating launch of local application: ${app.executable}`);
+        
+        // Open terminal window for simulation
+        if (onOpenTerminal) {
+          onOpenTerminal(app.name);
         }
         
-        // In a real desktop environment, this would use electron or tauri APIs
-        // For web demo, we'll simulate the launch
-        const fileType = isBatchFile ? 'batch script' : isExecutable ? 'desktop application' : 'local file';
-        console.log(`${fileType} launch simulated for: ${app.name}`);
-        
-        // Show a simulated launch notification
-        const notification = new Notification(`Launching ${app.name}`, {
-          body: `Starting ${fileType}...`,
-          icon: app.icon
-        });
+        // Simulate application launch process with logs
+        const fileType = isBatchFile ? 'batch script' : 
+                        isPythonFile ? 'Python script' :
+                        isExecutable ? 'executable' : 'local file';
         
         setTimeout(() => {
-          notification.close();
-        }, 3000);
+          if (onAddLog) {
+            onAddLog(`[SIMULATION] This is a browser simulation`);
+            onAddLog(`[SIMULATION] To launch real applications, use the Electron version`);
+            onAddLog(`Found ${fileType}: ${app.executable}`);
+          }
+        }, 100);
+        
+        setTimeout(() => {
+          if (onAddLog) {
+            onAddLog(`[SIMULATION] Would launch ${fileType}...`);
+          }
+        }, 800);
+        
+        setTimeout(() => {
+          if (onAddLog) {
+            const processId = Math.floor(Math.random() * 10000) + 1000;
+            onAddLog(`[SIMULATION] Process would start with PID: ${processId}`);
+            onAddLog(`[SIMULATION] ${app.name} simulation complete`);
+          }
+        }, 1500);
         
         resolve(true);
         return;
@@ -146,7 +155,36 @@ export const launchApplication = (
   });
 };
 
-// Request notification permission on module load
-if ('Notification' in window && Notification.permission === 'default') {
-  Notification.requestPermission();
-}
+// Функция для остановки приложения (только в Electron)
+export const stopApplication = async (processId: string): Promise<boolean> => {
+  if (!isElectron()) {
+    console.log('Stop function only available in Electron mode');
+    return false;
+  }
+
+  try {
+    const electronAPI = (window as any).electronAPI;
+    const result = await electronAPI.stopApplication(processId);
+    return result.success;
+  } catch (error) {
+    console.error('Failed to stop application:', error);
+    return false;
+  }
+};
+
+// Функция для выбора файла (только в Electron)
+export const selectExecutableFile = async (): Promise<string | null> => {
+  if (!isElectron()) {
+    console.log('File selection only available in Electron mode');
+    return null;
+  }
+
+  try {
+    const electronAPI = (window as any).electronAPI;
+    const result = await electronAPI.selectFile();
+    return result.success ? result.filePath : null;
+  } catch (error) {
+    console.error('Failed to select file:', error);
+    return null;
+  }
+};
